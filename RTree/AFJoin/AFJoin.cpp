@@ -6,11 +6,12 @@
 
 #include <iostream>
 #include <ctime>
-#include <queue>
+#include <deque>
+#include <algorithm>
 #include "RTree.h"
 
-#define MeshSize 10000
-#define XSize 100
+#define MeshSize 100
+#define XSize 10
 
 #define TBegin 10
 
@@ -36,12 +37,14 @@ struct Cell
   int max[2];
 };
 
-struct Cell S[MeshSize], T[MeshSize], N[MeshSize];
+struct Cell S[MeshSize], T[MeshSize];
+std::deque<int> N;
+std::deque<int> seed_list;
 
 int intersects;
 int nhbors_cnt = 0;
-//Cell search_rect(6, 4, 9, 6); // search will find above rects that this one overlaps
-//Cell search_rect(0, 0, 1, 1); // search will find above rects that this one overlaps
+//Cell search_rect(6, 4, 9, 6); // search will findID above rects that this one overlaps
+//Cell search_rect(0, 0, 1, 1); // search will findID above rects that this one overlaps
 
 
 int MySearchCallback(ValueType id, void* arg)
@@ -51,10 +54,24 @@ int MySearchCallback(ValueType id, void* arg)
   return (int)id; 
 }
 
+bool Overlap(Cell* a, Cell *b)
+{
+  int NUMDIMS = 2;
+  for(int index=0; index < NUMDIMS; ++index)
+  {
+    if (a->min[index] > b->max[index] ||
+        b->min[index] > a->max[index])
+    {
+      return false;
+    }
+  }
+  return true;
+}
 
 int* getCellCoords(int id)
 {
-   int coords[4];
+   int *coords;
+   coords = (int *)malloc(sizeof(int) *4);
    coords[0] = id % XSize;
    coords[1] = id / XSize;
    coords[2] = coords[0] + 1;
@@ -62,102 +79,94 @@ int* getCellCoords(int id)
    return coords;
 }
 
-//determine neighbors
-queue Neighbors(int id)
+
+bool findID(std::deque<int>L,int id)
 {
-   std::queue<int> N;
+    std::deque<int>::iterator it;
+    it = std::find(L.begin(),L.end(),id);
+    if (it == L.end())
+	return false;
+    else
+	return true;
+}
+
+//determine neighbors
+void Neighbors(int id)
+{
    // is id a corner
    if ((id == 0) || (id == XSize-1) || (id == (XSize* XSize) -1) || (id == (XSize-1) * XSize) )
    {
       if (id == 0)
       {
-          coords = getCellCoords(id+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
+	  if (!findID(N,id+1) && !findID(seed_list,id+1))
+             N.push_back(id+1);
+	  if (!findID(N,id+XSize) && !findID(seed_list,id+XSize))
+             N.push_back(id+XSize);
+	  if (!findID(N,id+XSize+1) && !findID(seed_list,id+XSize+1))
+             N.push_back(id+XSize+1);
+	  return;
       }
       if (id == XSize -1)
       {
-          coords = getCellCoords(id-1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize-1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
+	  if (!findID(N,id-1) && !findID(seed_list,id-1))
+             N.push_back(id-1);
+	  if (!findID(N,id+XSize) && !findID(seed_list,id+XSize))
+             N.push_back(id+XSize);
+	  if (!findID(N,id+XSize-1) && !findID(seed_list,id+XSize-1))
+             N.push_back(id+XSize-1);
+	  return;
       }
       if (id == (XSize*XSize)-1)
       {
-          coords = getCellCoords(id-1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize-1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
+	  if (!findID(N,id-1) && !findID(seed_list,id-1))
+             N.push_back(id-1);
+	  if (!findID(N,id-XSize) && !findID(seed_list,id-XSize))
+             N.push_back(id-XSize);
+	  if (!findID(N,id-XSize-1) && !findID(seed_list,id-XSize-1))
+             N.push_back(id-XSize-1);
+	  return;
       }
        if (id == (XSize-1)*XSize)
       {
-          coords = getCellCoords(id+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]); 
-          nhbors_cnt = nhbors_cnt + 1;
+	  if (!findID(N,id+1) && !findID(seed_list,id+1))
+             N.push_back(id+1);
+	  if (!findID(N,id-XSize) && !findID(seed_list,id-XSize))
+             N.push_back(id-XSize);
+	  if (!findID(N,id-XSize+1) && !findID(seed_list,id-XSize+1))
+             N.push_back(id-XSize+1);
+	  return;
       }
    }
    // is id on the X boundary ignoring corners
-   if ((0 < id < XSize-1) || (((XSize -1)*XSize) < id  < ((XSize*XSize)-1))) 
+   if ((0 < id < (XSize-1)) || (((XSize -1)*XSize) < id  < ((XSize*XSize)-1))) 
    { 
-       if (0 < id < XSize -1)
+       if (0 < id < (XSize -1))
        {
-          coords = getCellCoords(id-1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize -1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-
+	  if (!findID(N,id-1) && !findID(seed_list,id-1))
+             N.push_back(id-1);
+	  if (!findID(N,id+XSize) && !findID(seed_list,id+XSize))
+             N.push_back(id+XSize);
+	  if (!findID(N,id+XSize+1) && !findID(seed_list,id+XSize+1))
+             N.push_back(id+XSize+1);
+	  if (!findID(N,id+XSize-1) && !findID(seed_list,id+XSize-1))
+             N.push_back(id+XSize -1);
+	  if (!findID(N,id+1) && !findID(seed_list,id+1))
+             N.push_back(id+1);
+          return;
        }		
        if (((XSize -1)*XSize) < id  < ((XSize*XSize)-1))
        {
-	  coords = getCellCoords(id-1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize -1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-
+	  if (!findID(N,id-1) && !findID(seed_list,id-1))
+	     N.push_back(id-1);
+	  if (!findID(N,id-XSize) && !findID(seed_list,id-XSize))
+             N.push_back(id-XSize);
+	  if (!findID(N,id-XSize+1) && !findID(seed_list,id-XSize+1))
+             N.push_back(id-XSize+1);
+	  if (!findID(N,id-XSize-1) && !findID(seed_list,id-XSize-1))
+             N.push_back(id-XSize -1);
+	  if (!findID(N,id+1) && !findID(seed_list,id+1))
+             N.push_back(id+1);
+	  return;
        }
    }
    // is id on Y boundary ignoring corners
@@ -165,76 +174,54 @@ queue Neighbors(int id)
    {
         if (id %XSize == 0)
        {
-          coords = getCellCoords(id+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-
+	  if (!findID(N,id+1) && !findID(seed_list,id+1))
+             N.push_back(id+1);
+	  if (!findID(N,id+XSize) && !findID(seed_list,id+XSize))
+             N.push_back(id+XSize);
+	  if (!findID(N,id+XSize+1) && !findID(seed_list,id+XSize+1))
+             N.push_back(id+XSize+1);
+	  if (!findID(N,id-XSize) && !findID(seed_list,id-XSize))
+             N.push_back(id-XSize);
+	  if (!findID(N,id-XSize+1) && !findID(seed_list,id-XSize+1))
+             N.push_back(id-XSize+1);
+	  return;
        }		
        if ( id % XSize  == XSize -1)
        {
-	  coords = getCellCoords(id-1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize-1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize -1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-
+	  if (!findID(N,id-1) && !findID(seed_list,id-1))
+	     N.push_back(id-1);
+	  if (!findID(N,id-XSize) && !findID(seed_list,id-XSize))
+             N.push_back(id-XSize);
+	  if (!findID(N,id-XSize-1) && !findID(seed_list,id-XSize-1))
+             N.push_back(id-XSize-1);
+	  if (!findID(N,id+XSize-1) && !findID(seed_list,id+XSize-1))
+             N.push_back(id+XSize -1);
+	  if (!findID(N,id+XSize) && !findID(seed_list,id+XSize))
+             N.push_back(id+XSize);
+	  return;
        }
    }
    // or is id internal; numnhbrs = 8
    for (int i = 0; i < 8; i++)
    {
-	  coords = getCellCoords(id-1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize-1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize -1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-	  coords = getCellCoords(id+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id-XSize+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
-          coords = getCellCoords(id+XSize+1);
-          N[nhbors_cnt] = Cell(coords[0],coords[1],coords[2],coords[3]);
-          nhbors_cnt = nhbors_cnt + 1;
+	  if (!findID(N,id-1) && !findID(seed_list,id-1))
+	     N.push_back(id-1);
+	  if (!findID(N,id+1) && !findID(seed_list,id+1))
+	     N.push_back(id+1);
+	  if (!findID(N,id-XSize) && !findID(seed_list,id-XSize))
+             N.push_back(id-XSize);
+	  if (!findID(N,id-XSize-1) && !findID(seed_list,id-XSize-1))
+             N.push_back(id-XSize-1);
+	  if (!findID(N,id-XSize+1) && !findID(seed_list,id-XSize+1))
+             N.push_back(id-XSize+1);
+	  if (!findID(N,id+XSize) && !findID(seed_list,id+XSize))
+             N.push_back(id+XSize);
+	  if (!findID(N,id+XSize-1) && !findID(seed_list,id+XSize-1))
+             N.push_back(id+XSize-1);
+	  if (!findID(N,id+XSize+1) && !findID(seed_list,id+XSize+1))
+             N.push_back(id+XSize+1);
+	  return;
    }
-}
-int *add(int *a, int b)
-{
- 
-
 }
 
 int main()
@@ -278,31 +265,37 @@ int main()
 
   //AFJoin implementation
   clock_t begin = clock();
-  std::queue<int> seed_list
-  std::queue<int> N;	 
   /*for (int i = 0; i < XSize; i++)
   {
   for (int j = XSize*i; j < ((i*XSize)+XSize); j++)
   {*/
-     //for a given cell of T_d find if it intersects
+     //for a given cell of T_d findID if it intersects
      Cell search_rect(T[0].min[0],T[0].min[1],T[0].max[0],T[0].max[1]);
      int seed = STree.Search(search_rect.min, search_rect.max, MySearchCallback, NULL);
-     seed_list.push(seed);
+     cout << "start seed " << seed << "\n";
+
+     std::deque<int>::iterator it = std::find(seed_list.begin(),seed_list.end(),seed);
+     if (it == seed_list.end())	
+     	seed_list.push_back(seed);
+
      if (seed >= 0)
      {
-	//find Nhbrs of id
-	N = Neighbors(seed); 
-	while (N.size() > 0)
+	//findID Nhbrs of id
+	Neighbors(seed);
+	while (!N.empty())
 	{
-	   int id = N.pop();
+	   int id = N.front();
+	   cout << "count: " << N.size() << " id " << id << "\n";
+	   N.pop_front();
 	   int *coords = getCellCoords(id);
 	   Cell temp(coords[0],coords[1],coords[2],coords[3]);
-	   if (Overlap(search_rect,temp))
+	   if (Overlap(&search_rect,&temp))
 	   {
-		seed_list.push(id);
-		tmp = Neighbors(id);
-		for (int k = 0; k < tmp.size(); k++)
-		  N.push(tmp.pop());		
+     		std::deque<int>::iterator it = std::find(seed_list.begin(),seed_list.end(),id); 
+     		if (it == seed_list.end())	
+     			seed_list.push_back(id);
+
+		Neighbors(id);
 	   }
 	}
      }	
